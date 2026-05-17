@@ -225,6 +225,101 @@ def draw_md_tvd_tvt():
 
 
 # ---------------------------------------------------------------------------
+# Diagram 2a: Z vs TVD — same vertical axis, different sign + reference
+# ---------------------------------------------------------------------------
+def draw_z_vs_tvd():
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5.8), constrained_layout=True)
+
+    # ---------- Panel (a): schematic ----------
+    ax = axes[0]
+    ax.axis("off")
+    ax.set_xlim(-2.5, 10)
+    ax.set_ylim(-10, 4)
+
+    # Mean Sea Level
+    ax.plot([-2, 10], [0, 0], color="#1a5f9e", lw=1.4, ls="--")
+    ax.text(10.1, 0, "Mean Sea Level (Z = 0 datum)", fontsize=8, color="#1a5f9e",
+            va="center")
+
+    # Surface (some elevation above MSL)
+    surf_elev = 1.5
+    ax.plot([-2, 10], [surf_elev, surf_elev], color="#3a7d3a", lw=2.5)
+    ax.text(10.1, surf_elev, "Surface (here +500 ft)", fontsize=8,
+            color="#3a7d3a", va="center")
+
+    # Well
+    well_x = 2.5
+    well_top = surf_elev
+    well_bottom = -9.0
+    ax.plot([well_x, well_x], [well_top, well_bottom],
+            color="black", lw=3.0, solid_capstyle="round")
+    ax.plot([well_x, well_x], [well_top, well_bottom],
+            color="white", lw=1.0, ls=(0, (1, 1)))
+    # Bit marker
+    bit_y = -8.0
+    ax.scatter([well_x], [bit_y], s=120, color="#cc2222", marker="v",
+               zorder=5, edgecolor="black", linewidth=0.8)
+    ax.text(well_x + 0.15, bit_y, " bit", fontsize=9, color="#cc2222",
+            va="center", weight="bold")
+
+    # TVD measurement: positive, from surface to bit
+    ax.annotate("", xy=(well_x + 0.7, bit_y), xytext=(well_x + 0.7, surf_elev),
+                arrowprops=dict(arrowstyle="<|-|>", color="#cc2222", lw=1.5))
+    ax.text(well_x + 0.95, (surf_elev + bit_y) / 2 + 0.5,
+            "TVD = 9,500 ft\n(POSITIVE,\nfrom surface)",
+            fontsize=9, color="#cc2222", weight="bold", va="center")
+
+    # Z measurement: signed, from MSL to bit
+    ax.annotate("", xy=(well_x - 1.0, bit_y), xytext=(well_x - 1.0, 0),
+                arrowprops=dict(arrowstyle="<|-|>", color="#1a5f9e", lw=1.5))
+    ax.text(well_x - 1.2, (0 + bit_y) / 2,
+            "Z = −9,000 ft\n(NEGATIVE,\nfrom MSL)",
+            fontsize=9, color="#1a5f9e", weight="bold", va="center", ha="right")
+
+    # Formula
+    ax.text(5.0, -8.7,
+            "Z + TVD = surface_elevation\n"
+            "−9,000 + 9,500  =  +500 ✓",
+            fontsize=9.5, color="#444",
+            bbox=dict(boxstyle="round,pad=0.5", fc="#fff9e6",
+                      ec="#b8860b", lw=1.2))
+
+    ax.text(5.0, 3.0,
+            "Z and TVD measure the SAME vertical distance —\n"
+            "they only differ in (1) sign convention and (2) reference datum.",
+            fontsize=10, ha="center", weight="bold", color="#1f2933",
+            bbox=dict(boxstyle="round,pad=0.4", fc="#eef3f9", ec="#3b6fbb"))
+    ax.set_title("(a) Z (elevation from MSL) vs TVD (depth from surface)",
+                 fontsize=11, weight="bold")
+
+    # ---------- Panel (b): real Z trace for the demo well ----------
+    ax = axes[1]
+    md = demo_hw["MD"].to_numpy()
+    z = demo_hw["Z"].to_numpy()
+    # If we knew surface elevation we could plot TVD. We don't — explain that.
+    ax.plot(md, z, color="#1a5f9e", lw=1.6, label="Z (column from data)")
+    # Show TVD as a "phantom" curve with assumed surface +500 ft
+    assumed_surface = 500.0  # ft above MSL — typical Eagle Ford trend
+    tvd_phantom = assumed_surface - z
+    ax2 = ax.twinx()
+    ax2.plot(md, tvd_phantom, color="#cc2222", lw=1.6, ls="--",
+             label=f"TVD = +500 − Z (assumes surface = {assumed_surface:.0f} ft)")
+    ax.set_xlabel("MD (ft)")
+    ax.set_ylabel("Z (ft, signed elevation)", color="#1a5f9e")
+    ax2.set_ylabel("TVD (ft, depth from surface)", color="#cc2222")
+    ax.tick_params(axis="y", labelcolor="#1a5f9e")
+    ax2.tick_params(axis="y", labelcolor="#cc2222")
+    ax.legend(loc="lower left", fontsize=8)
+    ax2.legend(loc="upper right", fontsize=8)
+    ax.set_title(f"(b) Real data: well {DEMO_WELL}\n"
+                 "Z is in the CSV; TVD would be a constant offset away",
+                 fontsize=11)
+    ax.grid(alpha=0.3)
+
+    save_fig("z_vs_tvd", fig)
+
+
+# ---------------------------------------------------------------------------
 # Diagram 2b: TVT — typewell vs horizontal well (the definition diagram)
 # ---------------------------------------------------------------------------
 def draw_tvt_definition():
@@ -544,6 +639,7 @@ def draw_inverse_cartoon():
 
 draw_master()
 draw_md_tvd_tvt()
+draw_z_vs_tvd()
 draw_tvt_definition()
 draw_gr_concept()
 draw_typewell_vs_hw()
@@ -636,10 +732,16 @@ geological column at every measured-depth point. That &ldquo;where&rdquo; is the
       <td><span class="role-input">input feature</span></td>
     </tr>
     <tr>
-      <td><span class="term">Z / TVD</span></td>
-      <td>True vertical depth from surface, in geometric (Cartesian) coordinates.</td>
-      <td>Horizontal CSV column <code>Z</code> — signed elevation (negative = deeper).</td>
+      <td><span class="term">Z</span></td>
+      <td><b>Signed elevation</b> from a fixed datum (typically Mean Sea Level). Negative numbers = below the datum.</td>
+      <td>Horizontal CSV column <code>Z</code>. Range for the demo well: −9,755 to −9,258 ft.</td>
       <td><span class="role-input">input feature</span></td>
+    </tr>
+    <tr>
+      <td><span class="term">TVD</span></td>
+      <td><b>Unsigned depth</b> from the surface (wellhead/Kelly bushing). Always positive, always increases downward.</td>
+      <td><b>NOT in the dataset.</b> Would equal <code>surface_elevation − Z</code> if the surface elevation were given. See §2.1 for why this doesn't matter for modelling.</td>
+      <td><span class="role-input">derivable</span></td>
     </tr>
     <tr>
       <td><span class="term">TVT</span></td>
@@ -658,7 +760,33 @@ designed to be a coordinate that <i>moves with the geology</i>, not with the
 geometric depth.
 </blockquote>
 
-<h3>2.1 &nbsp;TVT in detail — the same scale, two ways to obtain it</h3>
+<h3>2.1 &nbsp;Z vs TVD — same vertical axis, different sign and datum</h3>
+""" + img("z_vs_tvd", "Z vs TVD") + """
+<p>
+<code>Z</code> and <code>TVD</code> both measure the bit&apos;s vertical
+position, but with different conventions:
+</p>
+<ul>
+  <li><b>Z</b> is <i>signed elevation</i> from a fixed datum (usually Mean Sea
+      Level). Below the datum: negative. Used for cross-well comparisons
+      (everyone shares the same MSL origin).</li>
+  <li><b>TVD</b> is <i>unsigned depth</i> from the surface (wellhead). Always
+      positive. Used by drilling engineers (rig depth, mud pressure, etc.).</li>
+</ul>
+<p>
+The relationship: <code>Z + TVD = surface_elevation</code>. So in any single
+well they carry the <b>same physical information</b> — they differ only by a
+constant (the surface elevation) and a sign flip.
+</p>
+<blockquote>
+<b>Practical note for this competition:</b> the dataset only ships <code>Z</code>
+(no <code>surface_elevation</code>, no <code>TVD</code> column). For modelling
+this is fine — any linear / smooth function of <code>Z</code> can absorb the
+per-well constant offset that distinguishes it from <code>TVD</code>. The
+linear-Z baseline works exactly because of this.
+</blockquote>
+
+<h3>2.2 &nbsp;TVT in detail — the same scale, two ways to obtain it</h3>
 """ + img("tvt_definition", "TVT typewell vs horizontal well") + """
 <p>
 This is the single most important concept in the dataset: <b>both wells share
