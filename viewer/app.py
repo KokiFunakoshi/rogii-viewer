@@ -219,6 +219,11 @@ class MainWindow(QtWidgets.QMainWindow):
         act_load.triggered.connect(self._action_load_predictions)
         file_menu.addAction(act_load)
 
+        act_bundle = QtGui.QAction("Open analysis bundle…", self)
+        act_bundle.setShortcut("Ctrl+B")
+        act_bundle.triggered.connect(self._action_open_bundle)
+        file_menu.addAction(act_bundle)
+
         act_clear_pred = QtGui.QAction("Clear predictions", self)
         act_clear_pred.triggered.connect(self._action_clear_predictions)
         file_menu.addAction(act_clear_pred)
@@ -243,6 +248,23 @@ class MainWindow(QtWidgets.QMainWindow):
     # ------------------------------------------------------------------
     # Actions
     # ------------------------------------------------------------------
+    def _action_open_bundle(self) -> None:
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Open analysis bundle (wells.parquet/rows.parquet/meta.json)")
+        if path:
+            self.open_bundle(Path(path))
+
+    def open_bundle(self, root: Path) -> None:
+        from viewer.analysis import make_tabs
+        try:
+            tabs = make_tabs(root)
+        except Exception as exc:  # noqa: BLE001
+            QtWidgets.QMessageBox.warning(self, "Bundle error", str(exc))
+            return
+        for name, widget in tabs:
+            self.tabs.addTab(widget, name)
+        self.status.showMessage(f"analysis bundle loaded: {root}")
+
     def _action_open_dataset(self) -> None:
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Pick the rogii-wellbore-geology-prediction folder"
